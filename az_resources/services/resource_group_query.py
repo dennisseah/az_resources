@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.resourcegraph import ResourceGraphClient
@@ -26,13 +27,21 @@ class ResourceGroupQuery(IResourceGroupQuery):
         return self.az_graph_client
 
     def query(self, query: str) -> list[Resource]:
-        argQuery = QueryRequest(  # type: ignore
+        data: list[dict[str, Any]] = []
+        argQuery = QueryRequest(
             subscriptions=[self.env.azure_subscription_id],
             query=query,
-            options=QueryRequestOptions(result_format="objectArray"),  # type: ignore
+            options=QueryRequestOptions(top=100, result_format="objectArray"),
         )
 
         argResults = self.get_az_graph_client().resources(argQuery)
+        data = data + argResults.data  # type: ignore
+
+        while argResults.total_records != len(data):
+            argQuery.options.skip = len(data)  # type: ignore
+            argResults = self.get_az_graph_client().resources(argQuery)
+            data = data + argResults.data  # type: ignore
+
         return [Resource(**r) for r in argResults.data]  # type: ignore
 
     def list_all(self) -> list[Resource]:
@@ -40,8 +49,15 @@ class ResourceGroupQuery(IResourceGroupQuery):
             """resourcecontainers
             |
             where type =~ 'microsoft.resources/subscriptions/resourcegroups'
+            | sort by name
             """
         )
 
     def fetch_resources(self, resource_group_name: str) -> list[Resource]:
-        return self.query(f"Resources | where resourceGroup =~ '{resource_group_name}'")
+        return self.query(
+            f"""
+            Resources |
+                where resourceGroup =~ '{resource_group_name}'
+                | sort by name
+            """
+        )

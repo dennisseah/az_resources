@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "sample - list resources",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "samples/list_resources_in_rg.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": { "PYTHONPATH": "${workspaceRoot}" }
+    }
+  ]
+}

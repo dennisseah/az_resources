@@ -13,6 +13,7 @@ from az_resources.services.resource_group_query import (
 @pytest.fixture
 def mock_client():
     return_value = MagicMock(spec=QueryResponse)
+    return_value.total_records = 2
     return_value.data = [
         {
             "id": "id",
