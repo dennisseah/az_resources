@@ -68,3 +68,11 @@ def test_fetch_resources():
 
     resources = svc.fetch_resources("test")
     assert len(resources) == 2
+
+
+def test_fetch_changes_to_resource_group():
+    svc = ResourceGroupQuery(env=ResourceGroupQueryEnv(azure_subscription_id="test"))
+    svc.query = MagicMock(return_value=[1, 2])
+
+    resources = svc.fetch_changes_to_resource_group("test")
+    assert len(resources) == 2

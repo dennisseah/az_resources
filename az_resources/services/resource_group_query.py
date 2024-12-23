@@ -61,3 +61,13 @@ class ResourceGroupQuery(IResourceGroupQuery):
                 | sort by name
             """
         )
+
+    def fetch_changes_to_resource_group(
+        self, resource_group_name: str
+    ) -> list[Resource]:
+        return self.query(
+            f"""
+            resourcechanges |
+                where resourceGroup =~ '{resource_group_name}'
+            """
+        )
