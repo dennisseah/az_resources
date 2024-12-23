@@ -20,6 +20,7 @@ def main():
         with open(os.path.join("outputs", "resources.json"), "w") as f:
             json.dump([r.model_dump() for r in resources], f, indent=2)
 
+        # list all changes to the first resource group
         changes = svc.fetch_changes_to_resource_group(all_resource_groups[0].name)
         with open(os.path.join("outputs", "changes.json"), "w") as f:
             json.dump([r.model_dump() for r in changes], f, indent=2)
