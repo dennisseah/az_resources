@@ -1,8 +1,7 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from azure.mgmt.resourcegraph.models import QueryResponse
-from pytest_mock import MockerFixture
 
 from az_resources.services.resource_group_query import (
     ResourceGroupQuery,
@@ -31,48 +30,47 @@ def mock_client():
     ]
 
     client = MagicMock()
-    client.resources = MagicMock(return_value=return_value)
+    client.resources = AsyncMock(return_value=return_value)
+    client.close = AsyncMock()
     return client
 
 
-def test_get_az_graph_client(mocker: MockerFixture):
-    mock_client = mocker.patch(
-        "az_resources.services.resource_group_query.ResourceGraphClient"
-    )
-
+def test_get_az_graph_client():
     svc = ResourceGroupQuery(env=ResourceGroupQueryEnv(azure_subscription_id="test"))
     assert svc.get_az_graph_client() is not None
-    assert svc.get_az_graph_client() is not None
-    mock_client.assert_called_once()  # only called once
 
 
-def test_query(mock_client):
+@pytest.mark.asyncio
+async def test_query(mock_client):
     svc = ResourceGroupQuery(env=ResourceGroupQueryEnv(azure_subscription_id="test"))
     svc.get_az_graph_client = MagicMock(return_value=mock_client)
 
-    resources = svc.query("query")
+    resources = await svc.query("query")
     assert len(resources) == 1
 
 
-def test_list_all():
+@pytest.mark.asyncio
+async def test_list_all():
     svc = ResourceGroupQuery(env=ResourceGroupQueryEnv(azure_subscription_id="test"))
-    svc.query = MagicMock(return_value=[1])
+    svc.query = AsyncMock(return_value=[1])
 
-    resources = svc.list_all()
+    resources = await svc.list_all()
     assert len(resources) == 1
 
 
-def test_fetch_resources():
+@pytest.mark.asyncio
+async def test_fetch_resources():
     svc = ResourceGroupQuery(env=ResourceGroupQueryEnv(azure_subscription_id="test"))
-    svc.query = MagicMock(return_value=[1, 2])
+    svc.query = AsyncMock(return_value=[1, 2])
 
-    resources = svc.fetch_resources("test")
+    resources = await svc.fetch_resources("test")
     assert len(resources) == 2
 
 
-def test_fetch_changes_to_resource_group():
+@pytest.mark.asyncio
+async def test_fetch_changes_to_resource_group():
     svc = ResourceGroupQuery(env=ResourceGroupQueryEnv(azure_subscription_id="test"))
-    svc.query = MagicMock(return_value=[1, 2])
+    svc.query = AsyncMock(return_value=[1, 2])
 
-    resources = svc.fetch_changes_to_resource_group("test")
+    resources = await svc.fetch_changes_to_resource_group("test")
     assert len(resources) == 2

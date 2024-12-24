@@ -4,7 +4,7 @@ from az_resources.models.resource import Resource
 
 
 class IResourceGroupQuery(Protocol):
-    def list_all(self) -> list[Resource]:
+    async def list_all(self) -> list[Resource]:
         """
         List all resource groups in the subscription.
 
@@ -12,7 +12,7 @@ class IResourceGroupQuery(Protocol):
         """
         ...
 
-    def fetch_resources(self, resource_group_name: str) -> list[Resource]:
+    async def fetch_resources(self, resource_group_name: str) -> list[Resource]:
         """
         Fetch all resources in a resource group.
 
@@ -21,7 +21,7 @@ class IResourceGroupQuery(Protocol):
         """
         ...
 
-    def fetch_changes_to_resource_group(
+    async def fetch_changes_to_resource_group(
         self, resource_group_name: str
     ) -> list[Resource]:
         """

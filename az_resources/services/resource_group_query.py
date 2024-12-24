@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
 
-from azure.identity import DefaultAzureCredential
-from azure.mgmt.resourcegraph import ResourceGraphClient
+from azure.identity.aio import DefaultAzureCredential
+from azure.mgmt.resourcegraph.aio import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import QueryRequest, QueryRequestOptions
 from lagom.environment import Env
 
@@ -17,16 +17,11 @@ class ResourceGroupQueryEnv(Env):
 @dataclass
 class ResourceGroupQuery(IResourceGroupQuery):
     env: ResourceGroupQueryEnv
-    az_graph_client: ResourceGraphClient | None = None
 
-    def get_az_graph_client(self):
-        if self.az_graph_client:
-            return self.az_graph_client
+    def get_az_graph_client(self) -> ResourceGraphClient:
+        return ResourceGraphClient(DefaultAzureCredential())
 
-        self.az_graph_client = ResourceGraphClient(DefaultAzureCredential())
-        return self.az_graph_client
-
-    def query(self, query: str) -> list[Resource]:
+    async def query(self, query: str) -> list[Resource]:
         data: list[dict[str, Any]] = []
         argQuery = QueryRequest(
             subscriptions=[self.env.azure_subscription_id],
@@ -34,18 +29,23 @@ class ResourceGroupQuery(IResourceGroupQuery):
             options=QueryRequestOptions(top=100, result_format="objectArray"),
         )
 
-        argResults = self.get_az_graph_client().resources(argQuery)
-        data = data + argResults.data  # type: ignore
-
-        while argResults.total_records != len(data):
-            argQuery.options.skip = len(data)  # type: ignore
-            argResults = self.get_az_graph_client().resources(argQuery)
+        client = self.get_az_graph_client()
+        try:
+            argResults = await client.resources(argQuery)
             data = data + argResults.data  # type: ignore
+            total = argResults.total_records
 
-        return [Resource(**r) for r in argResults.data]  # type: ignore
+            while total != len(data):
+                argQuery.options.skip = len(data)  # type: ignore
+                argResults = await client.resources(argQuery)
+                data = data + argResults.data  # type: ignore
 
-    def list_all(self) -> list[Resource]:
-        return self.query(
+            return [Resource(**r) for r in argResults.data]  # type: ignore
+        finally:
+            await client.close()
+
+    async def list_all(self) -> list[Resource]:
+        return await self.query(
             """resourcecontainers
             |
             where type =~ 'microsoft.resources/subscriptions/resourcegroups'
@@ -53,8 +53,8 @@ class ResourceGroupQuery(IResourceGroupQuery):
             """
         )
 
-    def fetch_resources(self, resource_group_name: str) -> list[Resource]:
-        return self.query(
+    async def fetch_resources(self, resource_group_name: str) -> list[Resource]:
+        return await self.query(
             f"""
             Resources |
                 where resourceGroup =~ '{resource_group_name}'
@@ -62,10 +62,10 @@ class ResourceGroupQuery(IResourceGroupQuery):
             """
         )
 
-    def fetch_changes_to_resource_group(
+    async def fetch_changes_to_resource_group(
         self, resource_group_name: str
     ) -> list[Resource]:
-        return self.query(
+        return await self.query(
             f"""
             resourcechanges |
                 where resourceGroup =~ '{resource_group_name}'
